@@ -4,6 +4,8 @@ import edge_tts
 import asyncio
 import base64
 import os
+import flet_audio as fta
+
 
 VOICES = {
     "🇦🇷 Elena (Mujer - Argentina)": "es-AR-ElenaNeural",
@@ -39,10 +41,11 @@ def main(page: ft.Page):
             if not is_paused and is_playing:
                 skip_next(None)
 
-    audio = ft.Audio(
+    audio = fta.Audio(
         autoplay=False,
         on_state_changed=on_audio_state_changed
     )
+
     page.overlay.append(audio)
 
     # Componentes de la interfaz
