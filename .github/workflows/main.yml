@@ -21,9 +21,7 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
           channel: 'stable'
-
 
       - name: Install Dependencies
         run: |
@@ -36,4 +34,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LectorPDF-Android-App
-          path: build/**/*.apk
+          path: build/apk/app-release.apk
