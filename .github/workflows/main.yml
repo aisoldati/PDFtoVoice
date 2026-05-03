@@ -1,1 +1,38 @@
+name: Build Android APK
 
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install flet
+
+      - name: Build APK
+        run: flet build apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LectorPDF-Android-App
+          path: build/apk/app-release.apk
