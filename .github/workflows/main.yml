@@ -26,7 +26,6 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
-          pip install flet
 
       - name: Build APK
         run: flet build apk
