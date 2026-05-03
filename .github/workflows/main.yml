@@ -35,4 +35,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LectorPDF-Android-App
-          path: build/apk/app-release.apk
+          path: build/**/*.apk
