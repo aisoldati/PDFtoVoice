@@ -7,11 +7,17 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -35,4 +41,3 @@ jobs:
         with:
           name: LectorPDF-Android-App
           path: build/**/*.apk
-
