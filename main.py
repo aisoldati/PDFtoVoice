@@ -1,24 +1,15 @@
 import flet as ft
 import traceback
+import asyncio
+import os
+import flet_audio as fta
 
 try:
-    import pypdf
-    import edge_tts
-    import asyncio
-    import base64
-    import os
-    import flet_audio as fta
-
     VOICES = {
         "🇦🇷 Elena (Mujer - Argentina)": "es-AR-ElenaNeural",
         "🇦🇷 Tomas (Hombre - Argentina)": "es-AR-TomasNeural",
         "🇲🇽 Dalia (Mujer - México)": "es-MX-DaliaNeural",
         "🇲🇽 Jorge (Hombre - México)": "es-MX-JorgeNeural",
-        "🇨🇴 Salome (Mujer - Colombia)": "es-CO-SalomeNeural",
-        "🇨🇴 Gonzalo (Hombre - Colombia)": "es-CO-GonzaloNeural",
-        "🇺🇸 Alonso (Hombre - EEUU)": "es-US-AlonsoNeural",
-        "🇺🇸 Paloma (Mujer - EEUU)": "es-US-PalomaNeural",
-        "🇪🇸 Alvaro (Hombre - España)": "es-ES-AlvaroNeural",
     }
 
     def main(page: ft.Page):
@@ -38,7 +29,6 @@ try:
 
         def on_audio_state_changed(e):
             nonlocal is_playing, is_paused
-            print(f"Audio state: {e.data}")
             if e.data == "completed":
                 if not is_paused and is_playing:
                     skip_next(None)
@@ -78,7 +68,6 @@ try:
 
         speed_slider.on_change = on_speed_change
 
-        # Progreso
         seek_slider = ft.Slider(min=0, max=1, value=0, disabled=True)
 
         def update_buttons():
@@ -93,6 +82,11 @@ try:
 
         async def generate_and_play_audio():
             nonlocal is_playing, is_paused
+            
+            # --- CARGA PEREZOSA: El motor de voz solo carga cuando apretamos Play ---
+            import edge_tts
+            import base64
+            
             if current_chunk_idx >= len(pdf_text_chunks):
                 is_playing = False
                 status_label.value = "Lectura finalizada."
@@ -119,7 +113,6 @@ try:
                     audio.src_base64 = audio_b64
                     
                     status_label.value = "Leyendo..."
-                    # Update progress
                     progress_percent = current_chunk_idx / max(1, len(pdf_text_chunks) - 1)
                     seek_slider.value = progress_percent
                     progress_label.value = f"Fragmento {current_chunk_idx + 1} de {len(pdf_text_chunks)}"
@@ -153,8 +146,6 @@ try:
             is_playing = True
             is_paused = False
             update_buttons()
-            
-            # Iniciar generación y reproducción asincrónica
             page.run_task(generate_and_play_audio)
 
         def pause_audio(e):
@@ -224,7 +215,6 @@ try:
 
         seek_slider.on_change = on_seek
 
-        # Controles de reproducción
         prev_btn = ft.IconButton(icon=ft.icons.SKIP_PREVIOUS, on_click=skip_prev, disabled=True)
         play_btn = ft.IconButton(icon=ft.icons.PLAY_CIRCLE_FILL, icon_color=ft.colors.GREEN, icon_size=50, on_click=play_audio, disabled=True)
         pause_btn = ft.IconButton(icon=ft.icons.PAUSE_CIRCLE_FILLED, icon_size=40, on_click=pause_audio, disabled=True)
@@ -238,6 +228,10 @@ try:
 
         def process_pdf(file_path):
             nonlocal pdf_text_chunks, current_chunk_idx
+            
+            # --- CARGA PEREZOSA: Importamos el motor de PDF solo al elegir el archivo ---
+            import pypdf
+            
             pdf_text_chunks.clear()
             current_chunk_idx = 0
             try:
@@ -275,10 +269,9 @@ try:
                 file_path = e.files[0].path
                 filename = e.files[0].name
                 file_label.value = filename
-                status_label.value = "Extrayendo texto..."
+                status_label.value = "Extrayendo texto y cargando motores..."
                 page.update()
                 
-                # Ejecutar procesamiento del PDF
                 process_pdf(file_path)
 
         file_picker = ft.FilePicker(on_result=on_file_picked)
@@ -290,14 +283,11 @@ try:
             on_click=lambda _: file_picker.pick_files(allowed_extensions=["pdf"])
         )
 
-        # Layout de la vista
         page.add(
             ft.Column(
                 controls=[
                     title_label,
                     ft.Divider(height=20, color=ft.colors.TRANSPARENT),
-                    
-                    # Card de archivo
                     ft.Card(
                         content=ft.Container(
                             padding=15,
@@ -307,10 +297,7 @@ try:
                             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
                         )
                     ),
-                    
                     ft.Divider(height=10, color=ft.colors.TRANSPARENT),
-                    
-                    # Configuracion
                     ft.Card(
                         content=ft.Container(
                             padding=15,
@@ -321,10 +308,7 @@ try:
                             ])
                         )
                     ),
-                    
                     ft.Divider(height=10, color=ft.colors.TRANSPARENT),
-                    
-                    # Reproductor
                     ft.Card(
                         content=ft.Container(
                             padding=15,
@@ -351,7 +335,7 @@ except Exception as e:
         page.scroll = "auto"
         page.add(
             ft.Text("CRITICAL ERROR", size=24, color="red", weight=ft.FontWeight.BOLD),
-            ft.Text("Ocurrió un error al iniciar la aplicación. Mándame captura de esto:", color="red"),
+            ft.Text("Ocurrió un error al iniciar la aplicación. Toma captura:", color="red"),
             ft.Text(error_trace, selectable=True, size=12)
         )
     ft.app(target=emergency_main)
