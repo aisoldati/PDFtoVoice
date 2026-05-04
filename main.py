@@ -1,15 +1,14 @@
 import flet as ft
 import traceback
-import asyncio
-import os
 import flet_audio as fta
 
 try:
+    # Mapeo de TLDs (top-level domains) para simular acentos en gTTS
     VOICES = {
-        "🇦🇷 Elena (Mujer - Argentina)": "es-AR-ElenaNeural",
-        "🇦🇷 Tomas (Hombre - Argentina)": "es-AR-TomasNeural",
-        "🇲🇽 Dalia (Mujer - México)": "es-MX-DaliaNeural",
-        "🇲🇽 Jorge (Hombre - México)": "es-MX-JorgeNeural",
+        "🇦🇷 Voz Argentina": "com.ar",
+        "🇲🇽 Voz México": "com.mx",
+        "🇪🇸 Voz España": "es",
+        "🇺🇸 Voz EEUU (Acento Gringo)": "us"
     }
 
     def main(page: ft.Page):
@@ -21,7 +20,6 @@ try:
         page.window_width = 400
         page.window_height = 700
 
-        # Estado de la aplicacion
         pdf_text_chunks = []
         current_chunk_idx = 0
         is_playing = False
@@ -33,40 +31,22 @@ try:
                 if not is_paused and is_playing:
                     skip_next(None)
 
-        audio = fta.Audio(
-            autoplay=False,
-            on_state_changed=on_audio_state_changed
-        )
+        audio = fta.Audio(autoplay=False, on_state_changed=on_audio_state_changed)
         page.overlay.append(audio)
 
-        # Componentes de la interfaz
         title_label = ft.Text("Lector de PDF con Voz", size=24, weight=ft.FontWeight.BOLD)
-        
         file_label = ft.Text("Ningún archivo seleccionado", color=ft.colors.GREY, italic=True)
         status_label = ft.Text("Listo.", italic=True, size=12)
         progress_label = ft.Text("Fragmento 0 de 0", size=12)
 
         voice_dropdown = ft.Dropdown(
-            label="Voz",
+            label="Acento",
             options=[ft.dropdown.Option(text=k, key=v) for k, v in VOICES.items()],
             value=list(VOICES.values())[0],
             width=300
         )
 
-        speed_slider = ft.Slider(min=-50, max=50, divisions=20, value=0, label="{value}%")
-        speed_label = ft.Text("Velocidad: Normal")
-
-        def on_speed_change(e):
-            val = int(speed_slider.value)
-            if val == 0:
-                speed_label.value = "Velocidad: Normal"
-            elif val > 0:
-                speed_label.value = f"Velocidad: +{val}%"
-            else:
-                speed_label.value = f"Velocidad: {val}%"
-            page.update()
-
-        speed_slider.on_change = on_speed_change
+        speed_switch = ft.Switch(label="Velocidad rápida", value=False)
 
         seek_slider = ft.Slider(min=0, max=1, value=0, disabled=True)
 
@@ -78,13 +58,15 @@ try:
             next_btn.disabled = current_chunk_idx >= len(pdf_text_chunks) - 1
             select_btn.disabled = is_playing and not is_paused
             voice_dropdown.disabled = is_playing and not is_paused
+            speed_switch.disabled = is_playing and not is_paused
             page.update()
 
-        async def generate_and_play_audio():
+        def generate_and_play_audio():
             nonlocal is_playing, is_paused
             
-            import edge_tts
+            import io
             import base64
+            from gtts import gTTS
             
             if current_chunk_idx >= len(pdf_text_chunks):
                 is_playing = False
@@ -93,38 +75,32 @@ try:
                 return
 
             chunk = pdf_text_chunks[current_chunk_idx]
-            voice = voice_dropdown.value
-            val = int(speed_slider.value)
-            rate = f"+{val}%" if val >= 0 else f"{val}%"
+            tld = voice_dropdown.value
+            is_fast = speed_switch.value
 
             status_label.value = f"Generando audio (Fragmento {current_chunk_idx + 1})..."
             page.update()
 
             try:
-                communicate = edge_tts.Communicate(chunk, voice, rate=rate)
-                audio_data = b""
-                async for data in communicate.stream():
-                    if data["type"] == "audio":
-                        audio_data += data["data"]
+                # Usar gTTS que es 100% pure python y funciona en Android sin crashear
+                tts = gTTS(text=chunk, lang='es', tld=tld, slow=not is_fast)
+                fp = io.BytesIO()
+                tts.write_to_fp(fp)
+                fp.seek(0)
                 
-                if len(audio_data) > 0:
-                    audio_b64 = base64.b64encode(audio_data).decode("utf-8")
-                    audio.src_base64 = audio_b64
-                    
-                    status_label.value = "Leyendo..."
-                    progress_percent = current_chunk_idx / max(1, len(pdf_text_chunks) - 1)
-                    seek_slider.value = progress_percent
-                    progress_label.value = f"Fragmento {current_chunk_idx + 1} de {len(pdf_text_chunks)}"
-                    
-                    audio.play()
-                    update_buttons()
-                else:
-                    status_label.value = "Error: audio vacío."
-                    is_playing = False
-                    update_buttons()
+                audio_b64 = base64.b64encode(fp.read()).decode("utf-8")
+                audio.src_base64 = audio_b64
+                
+                status_label.value = "Leyendo..."
+                progress_percent = current_chunk_idx / max(1, len(pdf_text_chunks) - 1)
+                seek_slider.value = progress_percent
+                progress_label.value = f"Fragmento {current_chunk_idx + 1} de {len(pdf_text_chunks)}"
+                
+                audio.play()
+                update_buttons()
 
             except Exception as e:
-                status_label.value = f"Error de conexión: {str(e)}"
+                status_label.value = f"Error: {str(e)}"
                 is_playing = False
                 update_buttons()
             page.update()
@@ -145,7 +121,7 @@ try:
             is_playing = True
             is_paused = False
             update_buttons()
-            page.run_task(generate_and_play_audio)
+            generate_and_play_audio()
 
         def pause_audio(e):
             nonlocal is_playing, is_paused
@@ -173,7 +149,7 @@ try:
                 current_chunk_idx += 1
                 if is_playing and not is_paused:
                     audio.pause()
-                    page.run_task(generate_and_play_audio)
+                    generate_and_play_audio()
                 else:
                     progress_percent = current_chunk_idx / max(1, len(pdf_text_chunks) - 1)
                     seek_slider.value = progress_percent
@@ -186,7 +162,7 @@ try:
                 current_chunk_idx -= 1
                 if is_playing and not is_paused:
                     audio.pause()
-                    page.run_task(generate_and_play_audio)
+                    generate_and_play_audio()
                 else:
                     progress_percent = current_chunk_idx / max(1, len(pdf_text_chunks) - 1)
                     seek_slider.value = progress_percent
@@ -208,7 +184,7 @@ try:
                 progress_label.value = f"Fragmento {current_chunk_idx + 1} de {total}"
                 if is_playing and not is_paused:
                     audio.pause()
-                    page.run_task(generate_and_play_audio)
+                    generate_and_play_audio()
                 else:
                     update_buttons()
 
@@ -227,9 +203,7 @@ try:
 
         def process_pdf(file_path):
             nonlocal pdf_text_chunks, current_chunk_idx
-            
             import pypdf
-            
             pdf_text_chunks.clear()
             current_chunk_idx = 0
             try:
@@ -239,7 +213,6 @@ try:
                     if text:
                         text = text.replace('\n', ' ').strip()
                         sentences = [s.strip() + "." for s in text.split('.') if len(s.strip()) > 5]
-                        
                         chunk = ""
                         for s in sentences:
                             if len(chunk) + len(s) > 500:
@@ -269,7 +242,6 @@ try:
                 file_label.value = filename
                 status_label.value = "Extrayendo texto y cargando motores..."
                 page.update()
-                
                 process_pdf(file_path)
 
         file_picker = ft.FilePicker(on_result=on_file_picked)
@@ -301,8 +273,7 @@ try:
                             padding=15,
                             content=ft.Column([
                                 voice_dropdown,
-                                ft.Row([speed_label], alignment=ft.MainAxisAlignment.START),
-                                speed_slider
+                                speed_switch
                             ])
                         )
                     ),
