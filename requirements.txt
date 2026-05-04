@@ -1,1 +1,4 @@
 flet
+flet-audio
+pypdf
+edge_tts
