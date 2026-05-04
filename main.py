@@ -83,7 +83,6 @@ try:
         async def generate_and_play_audio():
             nonlocal is_playing, is_paused
             
-            # --- CARGA PEREZOSA: El motor de voz solo carga cuando apretamos Play ---
             import edge_tts
             import base64
             
@@ -229,7 +228,6 @@ try:
         def process_pdf(file_path):
             nonlocal pdf_text_chunks, current_chunk_idx
             
-            # --- CARGA PEREZOSA: Importamos el motor de PDF solo al elegir el archivo ---
             import pypdf
             
             pdf_text_chunks.clear()
