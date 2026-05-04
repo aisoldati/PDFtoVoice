@@ -30,7 +30,7 @@ jobs:
       - name: Build APK
         run: flet build apk
 
-           - name: Upload APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: LectorPDF-Android-App
