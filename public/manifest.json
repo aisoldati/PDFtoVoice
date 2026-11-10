@@ -1,0 +1,17 @@
+{
+  "name": "VozPDF - Lector Inteligente",
+  "short_name": "VozPDF",
+  "description": "Convierte PDFs en audiolibros personalizados.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#ea580c",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3750/3750014.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

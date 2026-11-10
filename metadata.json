@@ -1,0 +1,6 @@
+{
+  "name": "VozPDF",
+  "description": "Convierte tus documentos PDF en audiolibros con voces personalizables, idiomas y control de velocidad.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
